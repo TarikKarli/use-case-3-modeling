@@ -16,3 +16,8 @@ dbt_packages/
 
 # VS Code ayarları
 .vscode/
+# Büyük ham veri dosyaları
+use_case_3_modeling/data/raw/*
+
+# Klasörün Git'te kalmasını sağlayan boş dosya
+!use_case_3_modeling/data/raw/.gitkeep
