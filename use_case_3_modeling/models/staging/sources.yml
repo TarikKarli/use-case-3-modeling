@@ -1,0 +1,48 @@
+version: 2
+
+sources:
+  - name: raw_retail
+    description: >
+      Online Retail II CSV dosyasından okunan ham e-ticaret
+      sipariş verileri.
+
+    loader: local_csv
+
+    tables:
+      - name: online_retail
+        description: >
+          Her satırı bir faturadaki ürün hareketini temsil eden
+          ham Online Retail II veri seti.
+
+        config:
+          external_location: >
+            read_csv_auto(
+              'data/raw/online_retail.csv',
+              header = true,
+              all_varchar = true
+            )
+
+        columns:
+          - name: Invoice
+            description: Fatura veya işlem numarası.
+
+          - name: StockCode
+            description: Kaynak sistemdeki ürün kodu.
+
+          - name: Description
+            description: Kaynak sistemdeki ürün açıklaması.
+
+          - name: Quantity
+            description: İşlemdeki ürün miktarı.
+
+          - name: InvoiceDate
+            description: Faturanın oluşturulduğu tarih ve saat.
+
+          - name: Price
+            description: Ürünün birim fiyatı.
+
+          - name: "Customer ID"
+            description: Kaynak sistemdeki müşteri numarası.
+
+          - name: Country
+            description: İşlemin ilişkilendirildiği ülke.
