@@ -1,0 +1,18 @@
+# Python sanal ortamı
+.venv/
+
+# Python geçici dosyaları
+__pycache__/
+*.pyc
+
+# dbt tarafından üretilen dosyalar
+target/
+logs/
+dbt_packages/
+
+# DuckDB veritabanı dosyaları
+*.duckdb
+*.duckdb.wal
+
+# VS Code ayarları
+.vscode/
