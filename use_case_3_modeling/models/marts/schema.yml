@@ -1,0 +1,103 @@
+version: 2
+
+models:
+  - name: dim_product
+    description: >
+      Her ürün için tek satır içeren ürün boyut tablosu.
+
+    columns:
+      - name: product_sk
+        description: >
+          Her ürün kaydını benzersiz olarak tanımlayan
+          surrogate key.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_date
+    description: >
+      Sipariş tarih aralığındaki takvim günlerini içeren
+      tarih boyut tablosu.
+
+    columns:
+      - name: date_sk
+        description: >
+          Her takvim gününü YYYYMMDD formatında benzersiz
+          olarak tanımlayan tarih anahtarı.
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_customer
+    description: >
+      Müşteri bilgilerini ve SCD Type 2 tarihsel
+      versiyonlarını içeren müşteri boyut tablosu.
+
+    columns:
+      - name: customer_sk
+        description: >
+          Her müşteri tarihsel versiyonunu benzersiz
+          olarak tanımlayan surrogate key.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: customer_segment
+        description: >
+          Müşterinin ilgili tarihsel versiyonda sahip
+          olduğu segment bilgisi.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Standard
+                  - Premium
+                  - Unknown
+
+  - name: fact_orders
+    description: >
+      Her satırı bir faturadaki tek bir ürün satırını
+      temsil eden sipariş fact tablosu.
+
+    columns:
+      - name: order_line_sk
+        description: >
+          Her fact satırını benzersiz olarak tanımlayan
+          surrogate key.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: customer_sk
+        description: >
+          Sipariş satırını dim_customer tablosundaki
+          ilgili müşteri versiyonuna bağlayan foreign key.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_sk
+
+      - name: product_sk
+        description: >
+          Sipariş satırını dim_product tablosundaki
+          ilgili ürüne bağlayan foreign key.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_sk
+
+      - name: date_sk
+        description: >
+          Sipariş satırını dim_date tablosundaki
+          ilgili takvim gününe bağlayan foreign key.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_sk

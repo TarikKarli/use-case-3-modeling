@@ -68,8 +68,10 @@ final as (
             'Unknown'
         ) as country,
 
-        'Standard' as customer_segment
-
+case
+    when customer_id = 13085 then 'Premium'
+    else 'Standard'
+end as customer_segment
     from ranked_customers
 
     where customer_row_number = 1

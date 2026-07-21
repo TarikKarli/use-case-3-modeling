@@ -1,0 +1,27 @@
+version: 2
+
+snapshots:
+  - name: customer_snapshot
+    description: >
+      Müşteri ülke ve segment değişikliklerini SCD Type 2
+      yöntemiyle tarihsel olarak takip eden snapshot.
+
+    relation: ref('stg_customers')
+
+    config:
+      schema: snapshots
+      unique_key: customer_id
+      strategy: check
+      check_cols:
+        - country
+        - customer_segment
+
+    columns:
+      - name: customer_id
+        description: Kaynak sistemdeki benzersiz müşteri numarası.
+
+      - name: country
+        description: Müşterinin ilişkilendirildiği ülke.
+
+      - name: customer_segment
+        description: Müşterinin mevcut segmenti.
