@@ -3,49 +3,131 @@ version: 2
 models:
   - name: dim_product
     description: >
-      Her ürün için tek satır içeren ürün boyut tablosu.
+      Her ürün kodu için tek bir kayıt içeren ürün boyut tablosudur.
+      stg_products modelinden beslenir. Kaynak sistemdeki stock_code
+      natural key olarak korunurken, analitik modellerde kullanılmak
+      üzere product_sk isimli surrogate key üretilir.
 
     columns:
       - name: product_sk
         description: >
-          Her ürün kaydını benzersiz olarak tanımlayan
-          surrogate key.
+          Her ürün kaydını veri ambarı içerisinde benzersiz olarak
+          tanımlayan surrogate key değeridir. fact_orders tablosundaki
+          product_sk foreign key alanının bağlandığı anahtardır.
         data_tests:
           - unique
           - not_null
 
+      - name: stock_code
+        description: >
+          Ürünü kaynak sistemde tanımlayan natural key değeridir.
+          Online Retail veri setindeki StockCode kolonundan gelir.
+
+      - name: product_name
+        description: >
+          Ürünün temizlenmiş açıklamasıdır. Aynı stock_code için birden
+          fazla açıklama bulunması durumunda stg_products modelinde
+          seçilen en güncel ve mümkünse boş olmayan açıklama kullanılır.
+
   - name: dim_date
     description: >
-      Sipariş tarih aralığındaki takvim günlerini içeren
-      tarih boyut tablosu.
+      Online Retail siparişlerinin minimum ve maksimum tarihleri arasındaki
+      her takvim günü için bir satır içeren tarih boyut tablosudur.
+      Tarih bazlı filtreleme, gruplama ve raporlama işlemlerini kolaylaştırır.
+      Sipariş bulunmayan günler de kesintisiz takvim yapısını korumak
+      amacıyla tabloda yer alabilir.
 
     columns:
       - name: date_sk
         description: >
-          Her takvim gününü YYYYMMDD formatında benzersiz
-          olarak tanımlayan tarih anahtarı.
+          Her takvim gününü YYYYMMDD biçiminde benzersiz olarak tanımlayan
+          surrogate tarih anahtarıdır. Örneğin 15 Temmuz 2026 tarihi
+          20260715 değeriyle temsil edilir.
         data_tests:
           - unique
           - not_null
 
+      - name: full_date
+        description: >
+          Takvim gününün DATE veri tipindeki gerçek tarih değeridir.
+
+      - name: year
+        description: >
+          Tarihin dört basamaklı yıl bilgisidir. Yıllık analiz ve
+          gruplamalarda kullanılır.
+
+      - name: quarter
+        description: >
+          Tarihin ait olduğu takvim çeyreğidir. Bir yıl Q1, Q2, Q3 ve Q4
+          olmak üzere dört çeyreğe ayrılır.
+
+      - name: month_number
+        description: >
+          Tarihin ait olduğu ayın 1 ile 12 arasındaki sayısal değeridir.
+
+      - name: month_name
+        description: >
+          Tarihin ait olduğu ayın metinsel adıdır. Raporlarda okunabilir
+          ay gösterimi sağlamak amacıyla kullanılır.
+
+      - name: week_number
+        description: >
+          Tarihin yıl içerisindeki hafta numarasıdır. Haftalık analizlerde
+          ve dönemsel karşılaştırmalarda kullanılabilir.
+
+      - name: day_of_month
+        description: >
+          Tarihin ay içerisindeki gün numarasıdır ve 1 ile 31 arasında
+          değer alabilir.
+
+      - name: day_name
+        description: >
+          Tarihin haftanın hangi gününe denk geldiğini belirten metinsel
+          alandır.
+
+      - name: is_weekend
+        description: >
+          Tarihin hafta sonuna denk gelip gelmediğini gösteren boolean
+          işarettir. Cumartesi ve pazar günleri için true değerini alır.
+
   - name: dim_customer
     description: >
-      Müşteri bilgilerini ve SCD Type 2 tarihsel
-      versiyonlarını içeren müşteri boyut tablosu.
+      Müşteri bilgilerini SCD Type 2 yaklaşımıyla tarihsel olarak saklayan
+      müşteri boyut tablosudur. Aynı customer_id için ülke veya segment
+      değiştiğinde eski kayıt silinmez; eski versiyonun geçerlilik süresi
+      kapatılır ve yeni bir müşteri versiyonu oluşturulur. Müşteri numarası
+      bulunmayan siparişleri karşılamak amacıyla customer_sk değeri -1 olan
+      özel bir Unknown Customer kaydı da içerir.
 
     columns:
       - name: customer_sk
         description: >
-          Her müşteri tarihsel versiyonunu benzersiz
-          olarak tanımlayan surrogate key.
+          Her müşteri tarihsel versiyonunu veri ambarında benzersiz olarak
+          tanımlayan surrogate key değeridir. Aynı customer_id farklı
+          dönemlerde farklı customer_sk değerlerine sahip olabilir.
         data_tests:
           - unique
           - not_null
 
+      - name: customer_id
+        description: >
+          Müşteriyi kaynak sistemde tanımlayan natural key değeridir.
+          SCD Type 2 nedeniyle aynı customer_id tabloda birden fazla
+          tarihsel versiyonda bulunabilir. Unknown Customer satırında
+          boş değer taşır.
+
+      - name: country
+        description: >
+          Müşterinin ilgili tarihsel versiyonda ilişkilendirildiği ülke
+          bilgisidir. Kaynak veride değer bulunmaması durumunda Unknown
+          değeri kullanılabilir.
+
       - name: customer_segment
         description: >
-          Müşterinin ilgili tarihsel versiyonda sahip
-          olduğu segment bilgisi.
+          Müşterinin ilgili tarihsel versiyondaki segmentidir. Bu projede
+          SCD Type 2 davranışını göstermek amacıyla Standard ve Premium
+          değerleri kullanılmıştır. Özel Unknown Customer kaydı Unknown
+          segmentine sahiptir.
         data_tests:
           - not_null
           - accepted_values:
@@ -55,24 +137,59 @@ models:
                   - Premium
                   - Unknown
 
+      - name: valid_from
+        description: >
+          İlgili müşteri versiyonunun geçerli olmaya başladığı tarih ve
+          saat bilgisidir. İlk tarihsel versiyonun geçmiş siparişlerle
+          eşleşebilmesi için projede başlangıç tarihi olarak 1900-01-01
+          kabul edilmiştir.
+
+      - name: valid_to
+        description: >
+          İlgili müşteri versiyonunun geçerliliğinin sona erdiği tarih
+          ve saat bilgisidir. Güncel versiyonlarda NULL, kapanmış tarihsel
+          versiyonlarda ise bir sonraki değişikliğin zamanı bulunur.
+
+      - name: is_current
+        description: >
+          Müşteri versiyonunun güncel kayıt olup olmadığını gösteren
+          boolean işarettir. valid_to alanı boş olan güncel kayıtlar için
+          true, kapanmış tarihsel kayıtlar için false değerini alır.
+
+      - name: customer_version_id
+        description: >
+          dbt snapshot tarafından her müşteri tarihsel versiyonu için
+          üretilen benzersiz SCD kimliğidir. Snapshot kaydındaki dbt_scd_id
+          alanından gelir.
+
   - name: fact_orders
     description: >
-      Her satırı bir faturadaki tek bir ürün satırını
-      temsil eden sipariş fact tablosu.
+      Online Retail siparişlerini yıldız şemanın merkezinde tutan fact
+      tablosudur. Tablonun grain'i bir faturadaki tek bir ürün satırıdır.
+      Her fact satırı müşteri, ürün ve tarih boyutlarına surrogate foreign
+      key alanlarıyla bağlanır. Satışlar, iadeler, iptaller ve düzeltme
+      hareketleri kaynak verideki işaretleriyle birlikte korunur.
 
     columns:
       - name: order_line_sk
         description: >
-          Her fact satırını benzersiz olarak tanımlayan
-          surrogate key.
+          Her sipariş fact satırını benzersiz olarak tanımlayan surrogate
+          key değeridir.
         data_tests:
           - unique
           - not_null
 
+      - name: invoice_no
+        description: >
+          Kaynak sistemde sipariş veya faturayı tanımlayan iş anahtarıdır.
+          Fact tablosunda ayrı bir dimension tablosu oluşturulmadan tutulan
+          degenerate dimension alanıdır.
+
       - name: customer_sk
         description: >
-          Sipariş satırını dim_customer tablosundaki
-          ilgili müşteri versiyonuna bağlayan foreign key.
+          Sipariş satırını, sipariş tarihinde geçerli olan dim_customer
+          müşteri versiyonuna bağlayan surrogate foreign key değeridir.
+          Kaynakta müşteri bilgisi olmayan siparişler -1 değerine bağlanır.
         data_tests:
           - not_null
           - relationships:
@@ -82,8 +199,8 @@ models:
 
       - name: product_sk
         description: >
-          Sipariş satırını dim_product tablosundaki
-          ilgili ürüne bağlayan foreign key.
+          Sipariş satırını dim_product tablosundaki ilgili ürün kaydına
+          bağlayan surrogate foreign key değeridir.
         data_tests:
           - not_null
           - relationships:
@@ -93,11 +210,52 @@ models:
 
       - name: date_sk
         description: >
-          Sipariş satırını dim_date tablosundaki
-          ilgili takvim gününe bağlayan foreign key.
+          Sipariş satırını dim_date tablosundaki ilgili takvim gününe
+          bağlayan surrogate foreign key değeridir.
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_date')
                 field: date_sk
+
+      - name: invoice_timestamp
+        description: >
+          Sipariş veya fatura işleminin gerçekleştiği tarih ve saat
+          bilgisidir. date_sk alanı bu timestamp değerinin tarih kısmından
+          oluşturulur.
+
+      - name: quantity
+        description: >
+          Sipariş satırındaki ürün miktarıdır. Pozitif değerler satış,
+          negatif değerler ise iade, iptal veya stok düzeltmesi gibi
+          işlemleri gösterebilir.
+
+      - name: unit_price
+        description: >
+          Ürünün sipariş satırındaki birim fiyatıdır.
+
+      - name: line_amount
+        description: >
+          quantity ile unit_price değerlerinin çarpımıyla hesaplanan satır
+          tutarıdır. İade veya iptal hareketlerinde negatif değer alabilir.
+
+      - name: is_cancellation_invoice
+        description: >
+          invoice_no değerinin C harfiyle başlaması durumunda true olan
+          boolean iptal faturası işaretidir.
+
+      - name: is_negative_quantity
+        description: >
+          quantity değerinin sıfırdan küçük olması durumunda true olan
+          boolean işarettir.
+
+      - name: is_return_or_adjustment
+        description: >
+          Sipariş satırının iade, iptal veya stok düzeltmesi niteliğinde
+          olabileceğini belirten yardımcı boolean işarettir.
+
+      - name: is_non_positive_price
+        description: >
+          unit_price değerinin sıfıra eşit veya sıfırdan küçük olması
+          durumunda true olan veri kalitesi işaretidir.

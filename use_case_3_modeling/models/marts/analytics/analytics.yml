@@ -1,0 +1,136 @@
+version: 2
+
+models:
+  - name: mart_monthly_sales
+    description: >
+      Aylık ve ülke bazında satış performansını özetleyen analytics
+      mart modelidir. fact_orders tablosundaki sipariş satırları,
+      dim_date ve dim_customer boyutlarıyla zenginleştirilerek
+      gruplanır. Modelin grain'i bir takvim ayı ve bir ülke
+      kombinasyonudur. Satış, iade, iptal, müşteri ve ürün
+      metriklerini raporlamaya hazır biçimde sunar.
+
+    columns:
+      - name: monthly_sales_sk
+        description: >
+          month_start_date ve country alanlarının birleştirilip
+          MD5 hash işleminden geçirilmesiyle oluşturulan benzersiz
+          teknik anahtardır. Her ay ve ülke kombinasyonu için
+          sabit bir değer üretir.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: month_start_date
+        description: >
+          İlgili aylık raporlama döneminin ilk günüdür. Örneğin
+          2010 yılının Mayıs ayındaki bütün siparişler
+          2010-05-01 değeri altında gruplanır.
+        data_tests:
+          - not_null
+
+      - name: year
+        description: >
+          Satış döneminin dört basamaklı takvim yılıdır.
+        data_tests:
+          - not_null
+
+      - name: month_number
+        description: >
+          Satış döneminin 1 ile 12 arasındaki sayısal ay
+          değeridir.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+                  - 8
+                  - 9
+                  - 10
+                  - 11
+                  - 12
+                quote: false
+
+      - name: month_name
+        description: >
+          Satış döneminin okunabilir metinsel ay adıdır.
+        data_tests:
+          - not_null
+
+      - name: country
+        description: >
+          Siparişlerin ilişkilendirildiği müşteri ülkesidir.
+          Müşteri veya ülke bilgisi bulunmayan siparişler
+          Unknown değeri altında raporlanır.
+        data_tests:
+          - not_null
+
+      - name: order_line_count
+        description: >
+          İlgili ay ve ülkede bulunan toplam fact satırı sayısıdır.
+          Bir faturada birden fazla ürün bulunabileceği için bu
+          değer fatura sayısından büyük olabilir.
+        data_tests:
+          - not_null
+
+      - name: invoice_count
+        description: >
+          İlgili ay ve ülkedeki benzersiz invoice_no sayısıdır.
+          Satış, iade ve iptal faturaları kaynak veride korunduğu
+          için bu hareketlerin tamamını kapsayabilir.
+        data_tests:
+          - not_null
+
+      - name: distinct_product_count
+        description: >
+          İlgili ay ve ülkede işlem gören benzersiz ürün sayısıdır.
+
+      - name: known_customer_count
+        description: >
+          İlgili ay ve ülkede siparişle ilişkilendirilen benzersiz
+          bilinen müşteri sayısıdır. customer_sk değeri -1 olan
+          Unknown Customer bu sayıya dahil edilmez.
+
+      - name: cancellation_invoice_count
+        description: >
+          Invoice numarası iptal faturası olarak işaretlenmiş
+          benzersiz fatura sayısıdır.
+
+      - name: sold_quantity
+        description: >
+          Pozitif quantity değerlerinin toplamıdır. Kaynak verideki
+          pozitif satış ve hareket miktarlarını temsil eder.
+
+      - name: returned_or_adjusted_quantity
+        description: >
+          Negatif quantity değerlerinin mutlak toplamıdır. İade,
+          iptal veya stok düzeltmesi hareketlerinin miktarını
+          pozitif bir büyüklük olarak raporlar.
+
+      - name: gross_sales_amount
+        description: >
+          Pozitif tutarlı ve iade veya düzeltme olarak
+          işaretlenmemiş sipariş satırlarının toplam parasal
+          değeridir. İade etkisi düşülmeden önceki satış
+          hareketlerini gösterir.
+
+      - name: return_adjustment_amount
+        description: >
+          İade, iptal veya düzeltme olarak işaretlenen satırların
+          toplam parasal etkisidir. Bu değer çoğunlukla negatif
+          olarak görülür.
+
+      - name: net_sales_amount
+        description: >
+          İlgili ay ve ülkedeki bütün line_amount değerlerinin
+          toplamıdır. Pozitif satışlar ile negatif iade ve
+          düzeltme hareketlerinin net etkisini gösterir.
+        data_tests:
+          - not_null

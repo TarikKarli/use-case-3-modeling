@@ -1,0 +1,143 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: >
+      Online Retail ham verisini sipariş satırı seviyesinde temizleyen
+      ve standartlaştıran staging modelidir. Kolon adları snake_case
+      biçimine dönüştürülür, veri tipleri güvenli şekilde çevrilir,
+      tam olarak aynı olan kaynak kayıtları tekilleştirilir ve iptal,
+      iade, negatif miktar ve sıfır ya da negatif fiyat durumları için
+      yardımcı işaret alanları üretilir. Modelin grain'i, exact duplicate
+      temizliğinden sonra bir faturadaki bir ürün satırıdır.
+
+    columns:
+      - name: invoice_no
+        description: >
+          Kaynak sistemde siparişi veya faturayı tanımlayan iş anahtarıdır.
+          Başında C bulunan değerler iptal faturalarını gösterebilir.
+
+      - name: stock_code
+        description: >
+          Sipariş satırındaki ürünü kaynak sistemde tanımlayan ürün kodudur.
+          dim_product modelinin oluşturulmasında natural key olarak kullanılır.
+
+      - name: product_name
+        description: >
+          Kaynak Description kolonundan gelen, başındaki ve sonundaki
+          gereksiz boşlukları temizlenmiş ürün açıklamasıdır. Kaynak veride
+          bazı satırlarda boş olabilir.
+
+      - name: quantity
+        description: >
+          Fatura satırındaki ürün miktarıdır. Pozitif değerler satışları,
+          negatif değerler ise iade, iptal veya stok düzeltmesi gibi
+          işlemleri gösterebilir.
+
+      - name: invoice_timestamp
+        description: >
+          Sipariş veya fatura işleminin gerçekleştiği tarih ve saat bilgisidir.
+          Kaynak InvoiceDate kolonu TIMESTAMP tipine dönüştürülerek üretilir.
+
+      - name: unit_price
+        description: >
+          Ürünün sipariş satırındaki birim fiyatıdır. Kaynak Price kolonu
+          sayısal tipe dönüştürülerek oluşturulur.
+
+      - name: customer_id
+        description: >
+          Kaynak sistemde müşteriyi tanımlayan natural key değeridir.
+          CSV dosyasında 13085.0 benzeri ondalıklı biçimde görülen değerler
+          temizlenerek tam sayı tipine dönüştürülür. Kayıtlı müşterisi
+          bulunmayan siparişlerde boş olabilir.
+
+      - name: country
+        description: >
+          Siparişin ilişkilendirildiği müşteri ülkesidir. Kaynak Country
+          kolonundaki metin değeri temizlenerek oluşturulur.
+
+      - name: line_amount
+        description: >
+          Sipariş satırının parasal tutarıdır. quantity ile unit_price
+          değerlerinin çarpılmasıyla hesaplanır. İade veya iptal satırlarında
+          negatif değer alabilir.
+
+      - name: is_cancellation_invoice
+        description: >
+          invoice_no değerinin C harfiyle başlaması durumunda true olan
+          boolean işarettir. Kaynak verideki iptal faturalarını ayırt etmek
+          için kullanılır.
+
+      - name: is_negative_quantity
+        description: >
+          quantity değerinin sıfırdan küçük olması durumunda true olan
+          boolean işarettir.
+
+      - name: is_return_or_adjustment
+        description: >
+          Satırın iptal, iade veya stok düzeltmesi niteliğinde olabileceğini
+          gösteren yardımcı boolean işarettir. İptal faturası veya negatif
+          miktar gibi koşullardan türetilir.
+
+      - name: is_non_positive_price
+        description: >
+          unit_price değerinin sıfıra eşit veya sıfırdan küçük olması
+          durumunda true olan boolean işarettir. Veri kalitesi ve özel işlem
+          kontrolü amacıyla tutulur.
+
+  - name: stg_customers
+    description: >
+      Müşteri boyutuna temel oluşturan staging modelidir. Customer ID değeri
+      boş olan kayıtlar kapsam dışı bırakılır ve her müşteri için kaynakta
+      gözlemlenen en güncel kayıt seçilerek tek satır üretilir. Ülke bilgisi
+      müşterinin en güncel sipariş kaydından alınır. customer_segment alanı,
+      SCD Type 2 değişiklik senaryosunu göstermek amacıyla türetilmiştir.
+
+    columns:
+      - name: customer_id
+        description: >
+          Kaynak sistemde müşteriyi benzersiz şekilde tanımlayan natural
+          key değeridir. Bu modelde boş Customer ID kayıtları bulunmaz.
+
+      - name: country
+        description: >
+          Müşterinin kaynak verideki en güncel sipariş kaydıyla
+          ilişkilendirilen ülke bilgisidir.
+
+      - name: invoice_timestamp
+        description: >
+          Müşteri için seçilen en güncel kaynak sipariş kaydının tarih ve
+          saat bilgisidir. Her müşteri için son gözlemi belirlemek amacıyla
+          kullanılır.
+
+      - name: customer_segment
+        description: >
+          Müşterinin segment bilgisidir. Bu projede SCD Type 2 davranışını
+          göstermek için türetilmiş olup Standard ve kontrollü değişiklik
+          senaryosunda Premium değerlerini alabilir.
+
+  - name: stg_products
+    description: >
+      Ürün boyutuna temel oluşturan staging modelidir. Her stock_code için
+      tek bir satır üretir ve mümkün olduğunda en güncel boş olmayan ürün
+      adını seçer. Böylece aynı ürün kodunun kaynak veride birden fazla
+      açıklamayla bulunması dimension katmanına kontrollü şekilde aktarılır.
+
+    columns:
+      - name: stock_code
+        description: >
+          Kaynak sistemde ürünü tanımlayan natural key değeridir. Modelde
+          her stock_code için tek satır bulunması hedeflenir.
+
+      - name: product_name
+        description: >
+          Ürün kodu için seçilen temizlenmiş ürün adıdır. Aynı ürün koduna
+          ait birden fazla açıklama bulunduğunda güncel ve boş olmayan
+          açıklama tercih edilir.
+
+      - name: invoice_timestamp
+        description: >
+          Ürün kaydının seçilmesinde kullanılan ilgili kaynak siparişinin
+          tarih ve saat bilgisidir. En güncel ürün açıklamasının
+          belirlenmesine yardımcı olur.
+          
