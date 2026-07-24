@@ -454,6 +454,22 @@ incelenebilir.
 - Fact ve mart toplamları otomatik test ile karşılaştırılmıştır.
 
 ---
+---
+
+## Karşılaşılan Sorunlar ve Çözümleri
+
+### 1. Sanal ortam ve dbt çalıştırma yolu
+
+Proje sırasında bazı terminallerde farklı bir use case'e ait sanal ortamın aktif olduğu görüldü. Ayrıca komutun repository kökünden veya dbt proje klasöründen çalıştırılmasına bağlı olarak `dbt.exe` dosyasının göreli yolu değişti.
+
+Kullanılan yollar:
+
+```text
+Repository kökünden:
+.\.venv\Scripts\dbt.exe
+
+dbt proje klasöründen:
+..\.venv\Scripts\dbt.exe
 
 ## Sonuç
 
